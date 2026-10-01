@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Retro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'VT323', monospace; }
+        .glass-panel { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 2px solid rgba(74, 222, 128, 0.3); }
+        canvas { 
+            box-shadow: 0 0 30px rgba(74, 222, 128, 0.15), inset 0 0 20px rgba(0,0,0,0.5);
+            background: linear-gradient(to bottom, #0f172a, #020617);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-emerald-400 min-h-screen flex flex-col items-center justify-center relative overflow-hidden selection:bg-emerald-500 selection:text-white">
+    <!-- CRT Overlay -->
+    <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle,rgba(0,0,0,0)_60%,rgba(0,0,0,0.6)_100%)] z-50"></div>
+    <div class="pointer-events-none absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.25)_50%)] bg-[length:100%_4px] z-40 opacity-20"></div>
+
+    <a href="index.html" class="absolute top-6 left-6 px-4 py-2 glass-panel rounded hover:bg-slate-800 hover:text-emerald-300 transition-colors flex items-center gap-2 text-xl z-50 group">
+        <span class="group-hover:-translate-x-1 transition-transform">←</span> EXIT
+    </a>
+
+    <div class="glass-panel p-8 rounded-xl flex flex-col items-center z-10 relative">
+        <h1 class="text-6xl mb-2 drop-shadow-[0_0_10px_rgba(74,222,128,0.5)] tracking-widest">SNAKE</h1>
+        <div class="text-3xl mb-6 bg-slate-900 px-6 py-2 rounded border border-emerald-500/30 shadow-inner">SCORE: <span id="score">0</span></div>
+        
+        <canvas id="game" width="400" height="400" class="rounded border-4 border-slate-800"></canvas>
+        
+        <div class="mt-6 text-xl text-emerald-600 animate-pulse">USE ARROW KEYS TO MOVE</div>
+    </div>
+    
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        const grid = 20;
+        let count = 0;
+        let score = 0;
+        
+        let snake = { x: 160, y: 160, dx: grid, dy: 0, cells: [], maxCells: 4 };
+        let apple = { x: 320, y: 320 };
+
+        function getRandomInt(min, max) { return Math.floor(Math.random() * (max - min)) + min; }
+
+        function drawGrid() {
+            ctx.strokeStyle = "rgba(74, 222, 128, 0.05)";
+            ctx.lineWidth = 1;
+            for(let i=0; i<=canvas.width; i+=grid) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+            }
+        }
+
+        function resetGame() {
+            snake.x = 160; snake.y = 160; 
+            snake.cells = []; snake.maxCells = 4; 
+            snake.dx = grid; snake.dy = 0;
+            score = 0; 
+            document.getElementById('score').innerText = score;
+            
+            // Flash screen red on death
+            ctx.fillStyle = 'rgba(255,0,0,0.3)';
+            ctx.fillRect(0,0,canvas.width,canvas.height);
+        }
+
+        function loop() {
+            requestAnimationFrame(loop);
+            if (++count < 5) return; // Control speed
+            count = 0;
+            
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            drawGrid();
+            
+            snake.x += snake.dx;
+            snake.y += snake.dy;
+            
+            // Wrap around edges
+            if (snake.x < 0) snake.x = canvas.width - grid;
+            else if (snake.x >= canvas.width) snake.x = 0;
+            if (snake.y < 0) snake.y = canvas.height - grid;
+            else if (snake.y >= canvas.height) snake.y = 0;
+
+            snake.cells.unshift({x: snake.x, y: snake.y});
+            if (snake.cells.length > snake.maxCells) snake.cells.pop();
+
+            // Draw Apple (Glow effect)
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#ef4444';
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(apple.x + 2, apple.y + 2, grid-4, grid-4);
+            ctx.shadowBlur = 0; // Reset
+
+            // Draw Snake
+            snake.cells.forEach(function(cell, index) {
+                // Head is brighter
+                ctx.fillStyle = index === 0 ? '#4ade80' : '#22c55e';
+                
+                // Draw rounded rects for snake body
+                ctx.beginPath();
+                ctx.roundRect(cell.x + 1, cell.y + 1, grid-2, grid-2, 4);
+                ctx.fill();
+
+                // Eat apple
+                if (cell.x === apple.x && cell.y === apple.y) {
+                    snake.maxCells++;
+                    score += 10;
+                    document.getElementById('score').innerText = score;
+                    apple.x = getRandomInt(0, 20) * grid;
+                    apple.y = getRandomInt(0, 20) * grid;
+                }
+                
+                // Check collision with self
+                for (let i = index + 1; i < snake.cells.length; i++) {
+                    if (cell.x === snake.cells[i].x && cell.y === snake.cells[i].y) {
+                        resetGame();
+                    }
+                }
+            });
+        }
+
+        document.addEventListener('keydown', function(e) {
+            // Prevent scrolling with arrows
+            if([37, 38, 39, 40].includes(e.which)) e.preventDefault();
+
+            if (e.which === 37 && snake.dx === 0) { snake.dx = -grid; snake.dy = 0; }
+            else if (e.which === 38 && snake.dy === 0) { snake.dy = -grid; snake.dx = 0; }
+            else if (e.which === 39 && snake.dx === 0) { snake.dx = grid; snake.dy = 0; }
+            else if (e.which === 40 && snake.dy === 0) { snake.dy = grid; snake.dx = 0; }
+        });
+
+        // Start
+        requestAnimationFrame(loop);
+    </script>
+</body>
+</html>

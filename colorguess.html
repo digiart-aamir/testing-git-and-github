@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RGB Guesser</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=Fira+Code:wght@500&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Outfit', sans-serif; }
+        .font-code { font-family: 'Fira Code', monospace; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .color-btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+        }
+        .color-btn:hover { transform: scale(1.05) translateY(-5px); }
+        .fade-out { opacity: 0; transform: scale(0.9); pointer-events: none; }
+    </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen flex flex-col items-center justify-center py-12 relative overflow-hidden">
+    <!-- Ambient Background -->
+    <div id="ambient-bg" class="absolute inset-0 opacity-20 transition-colors duration-1000 -z-10 bg-slate-900"></div>
+    
+    <a href="index.html" class="absolute top-6 left-6 px-5 py-2.5 glass-panel rounded-xl hover:bg-slate-800 transition-colors flex items-center gap-2 group z-10">
+        <span class="group-hover:-translate-x-1 transition-transform">←</span> Back to Hub
+    </a>
+
+    <div class="glass-panel p-8 md:p-16 rounded-[2.5rem] flex flex-col items-center w-full max-w-3xl mx-4 shadow-2xl relative z-10 text-center border-t border-white/20">
+        <h1 class="text-4xl font-black mb-2 text-slate-200">RGB Guesser</h1>
+        <p class="text-slate-400 mb-8">Test your developer eyes.</p>
+        
+        <div class="bg-slate-900/80 px-8 py-6 rounded-2xl shadow-inner border border-slate-800 mb-8 w-full max-w-lg">
+            <h2 class="text-slate-400 text-sm uppercase tracking-widest font-bold mb-2">Target Color</h2>
+            <div id="color-display" class="font-code text-4xl md:text-5xl font-bold tracking-tight text-white drop-shadow-md">RGB(0, 0, 0)</div>
+        </div>
+        
+        <div id="msg" class="text-xl h-8 font-bold mb-8 transition-all"></div>
+        
+        <div id="options" class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+            <button class="color-btn w-full aspect-square rounded-2xl" onclick="check(0)"></button>
+            <button class="color-btn w-full aspect-square rounded-2xl" onclick="check(1)"></button>
+            <button class="color-btn w-full aspect-square rounded-2xl" onclick="check(2)"></button>
+        </div>
+        
+        <div class="mt-12 flex items-center justify-between w-full border-t border-slate-700/50 pt-8">
+            <div class="text-left">
+                <div class="text-slate-400 text-sm">Score</div>
+                <div class="text-2xl font-bold" id="score">0</div>
+            </div>
+            <button onclick="init()" class="px-8 py-3 bg-white text-slate-900 hover:bg-slate-200 font-bold rounded-xl transition-colors shadow-lg">New Colors</button>
+            <div class="text-right">
+                <div class="text-slate-400 text-sm">Streak</div>
+                <div class="text-2xl font-bold text-amber-400" id="streak">0</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let correct;
+        let colors = [];
+        let score = 0;
+        let streak = 0;
+        let gameOver = false;
+        
+        function randColor() {
+            return `rgb(${Math.floor(Math.random()*256)}, ${Math.floor(Math.random()*256)}, ${Math.floor(Math.random()*256)})`;
+        }
+        
+        function init() {
+            gameOver = false;
+            const msgEl = document.getElementById('msg');
+            msgEl.innerText = 'Select the matching color';
+            msgEl.className = 'text-xl h-8 font-medium text-slate-400 mb-8';
+            
+            colors = [randColor(), randColor(), randColor()];
+            correct = Math.floor(Math.random() * 3);
+            
+            // Format for display
+            const targetRGB = colors[correct].toUpperCase().replace('RGB(', 'RGB( ').replace(/,/g, ', ');
+            document.getElementById('color-display').innerText = targetRGB;
+            
+            // Optional: slight tint to ambient background based on target
+            document.getElementById('ambient-bg').style.backgroundColor = colors[correct];
+            
+            const btns = document.getElementById('options').children;
+            for(let i=0; i<3; i++) {
+                btns[i].style.backgroundColor = colors[i];
+                btns[i].classList.remove('fade-out');
+                btns[i].disabled = false;
+                btns[i].style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.3)';
+            }
+        }
+        
+        function check(idx) {
+            if(gameOver) return;
+            
+            const btns = document.getElementById('options').children;
+            const msgEl = document.getElementById('msg');
+            
+            if(idx === correct) {
+                gameOver = true;
+                msgEl.innerText = 'Correct! Outstanding Eye! 🎉';
+                msgEl.className = 'text-2xl h-8 font-bold text-green-400 mb-8 drop-shadow-[0_0_8px_rgba(74,222,128,0.5)]';
+                
+                score += 10 + (streak * 5);
+                streak++;
+                
+                // Show all as correct color to reveal
+                for(let i=0; i<3; i++) {
+                    btns[i].style.backgroundColor = colors[correct];
+                    if(i !== correct) btns[i].style.opacity = '0.5';
+                }
+                
+                // Auto next after delay
+                setTimeout(init, 1500);
+            } else {
+                msgEl.innerText = 'Incorrect. Try again!';
+                msgEl.className = 'text-xl h-8 font-bold text-red-400 mb-8';
+                
+                streak = 0;
+                
+                btns[idx].classList.add('fade-out');
+                btns[idx].disabled = true;
+            }
+            
+            document.getElementById('score').innerText = score;
+            document.getElementById('streak').innerText = streak;
+        }
+        
+        init();
+    </script>
+</body>
+</html>
